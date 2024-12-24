@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Previous head and style sections remain exactly the same -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Genesis Search</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <style>
+        /* All previous styles remain exactly the same */
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --background: #f8fafc;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .search-form {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        input, select, button {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            font-size: 1rem;
+        }
+
+        input:focus, select:focus {
+            outline: 2px solid var(--primary);
+            outline-offset: -1px;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        .results {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .book-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .book-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .book-meta {
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        .book-links {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .download-links {
+            display: none;
+            margin-top: 0.5rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+        }
+
+        .download-links.active {
+            display: block;
+        }
+
+        .download-links ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .download-links li {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .download-links a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .download-links a:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+        }
+
+        .error {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 640px) {
+            .search-row {
+                grid-template-columns: 1fr;
+            }
+
+            .form-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Library Genesis Search</h1>
+        </div>
+
+        <form class="search-form" id="searchForm">
+            <div class="search-row">
+                <input type="text" id="query" placeholder="Enter search query..." required>
+                <select id="searchBy">
+                    <option value="">Search All</option>
+                    <option value="title">Title</option>
+                    <option value="author">Author</option>
+                    <option value="publisher">Publisher</option>
+                    <option value="year">Year</option>
+                    <option value="isbn">ISBN</option>
+                    <option value="language">Language</option>
+                </select>
+                <button type="submit">Search</button>
+            </div>
+        </form>
+
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        const PREFERRED_MIRROR = 'https://libgen.is';
+        const OTHER_MIRRORS = [
+            'https://libgen.rs',
+            'https://libgen.st'
+        ];
+        const PROXY_URLS = [
+            'https://api.allorigins.win/raw?url=',
+            'https://api.codetabs.com/v1/proxy?quest='
+        ];
+
+        const searchForm = document.getElementById('searchForm');
+        const resultsDiv = document.getElementById('results');
+        const errorDiv = document.getElementById('error');
+
+        async function tryFetch(url, proxyIndex = 0) {
+            if (proxyIndex >= PROXY_URLS.length) {
+                throw new Error('All proxies failed');
+            }
+
+            try {
+                const response = await fetch(PROXY_URLS[proxyIndex] + encodeURIComponent(url));
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.text();
+            } catch (error) {
+                return tryFetch(url, proxyIndex + 1);
+            }
+        }
+
+        async function searchLibgen(query, searchBy) {
+            const params = new URLSearchParams({
+                req: query,
+                column: searchBy,
+                res: 100,
+                page: 1
+            });
+
+            const mirrors = [PREFERRED_MIRROR, ...OTHER_MIRRORS];
+            let lastError = null;
+
+            for (const mirror of mirrors) {
+                try {
+                    const html = await tryFetch(`${mirror}/search.php?${params}`);
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const books = [];
+                    const rows = doc.querySelectorAll('table[rules="rows"] tr:not(:first-child)');
+
+                    rows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 10) {
+                            const book = {
+                                id: cells[0].textContent.trim(),
+                                author: cells[1].textContent.trim(),
+                                title: cells[2].querySelector('a')?.textContent.trim() || '',
+                                publisher: cells[3].textContent.trim(),
+                                year: cells[4].textContent.trim(),
+                                pages: cells[5].textContent.trim(),
+                                language: cells[6].textContent.trim(),
+                                size: cells[7].textContent.trim(),
+                                extension: cells[8].textContent.trim(),
+                                mirrors: Array.from(cells[9].querySelectorAll('a'), a => {
+                                    let href = a.href;
+                                    if (href.startsWith('http://')) {
+                                        href = 'https://' + href.slice(7);
+                                    }
+                                    return href;
+                                })
+                            };
+                            books.push(book);
+                        }
+                    });
+
+                    if (books.length > 0) {
+                        return books;
+                    }
+                } catch (error) {
+                    lastError = error;
+                    console.error(`Failed with mirror ${mirror}:`, error);
+                }
+            }
+
+            throw lastError || new Error('No results found on any mirror');
+        }
+
+        async function getAllDownloadLinks(mirrorLink) {
+            try {
+                const html = await tryFetch(mirrorLink);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const links = [];
+
+                // Get libgen.li link
+                const libgenLiLink = Array.from(doc.querySelectorAll('a')).find(a =>
+                    a.href && a.href.includes('libgen.li')
+                )?.href;
+
+                if (libgenLiLink) {
+                    links.push({
+                        url: libgenLiLink,
+                        label: 'Libgen.li Download'
+                    });
+                }
+
+                // Get alternative download link
+                const altDownload = doc.querySelector('#download a')?.href;
+                if (altDownload) {
+                    links.push({
+                        url: altDownload,
+                        label: 'Alternative Download'
+                    });
+                }
+
+                // Get GET link
+                const getLink = Array.from(doc.querySelectorAll('a')).find(a =>
+                    a.textContent.toLowerCase().includes('get')
+                )?.href;
+
+                if (getLink) {
+                    links.push({
+                        url: getLink,
+                        label: 'GET Download'
+                    });
+                }
+
+                return links;
+            } catch (error) {
+                console.error('Error fetching download links:', error);
+                throw error;
+            }
+        }
+
+        function displayResults(books) {
+            resultsDiv.innerHTML = books.map(book => `
+                <div class="book-card">
+                    <div class="book-title">${_.escape(book.title)}</div>
+                    <div class="book-meta">
+                        <strong>Author:</strong> ${_.escape(book.author)} |
+                        <strong>Publisher:</strong> ${_.escape(book.publisher)} |
+                        <strong>Year:</strong> ${_.escape(book.year)} |
+                        <strong>Pages:</strong> ${_.escape(book.pages)} |
+                        <strong>Language:</strong> ${_.escape(book.language)} |
+                        <strong>Size:</strong> ${_.escape(book.size)} |
+                        <strong>Format:</strong> ${_.escape(book.extension)}
+                    </div>
+                    <div class="book-links">
+                        ${book.mirrors.map((mirror, index) => `
+                            <button onclick="handleMirrorClick(this, '${mirror}')">
+                                Mirror ${index + 1}
+                            </button>
+                        `).join('')}
+                    </div>
+                    <div class="download-links"></div>
+                </div>
+            `).join('');
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            errorDiv.style.display = 'none';
+        }
+
+        function showLoading() {
+            resultsDiv.innerHTML = '<div class="loading">Searching...</div>';
+        }
+
+        async function handleMirrorClick(button, mirrorLink) {
+            const bookCard = button.closest('.book-card');
+            const downloadLinksDiv = bookCard.querySelector('.download-links');
+
+            // Show loading state
+            downloadLinksDiv.innerHTML = '<div class="loading">Loading download links...</div>';
+            downloadLinksDiv.classList.add('active');
+
+            try {
+                const links = await getAllDownloadLinks(mirrorLink);
+                if (links.length === 0) {
+                    downloadLinksDiv.innerHTML = '<div class="error">No download links found</div>';
+                } else {
+                    downloadLinksDiv.innerHTML = `
+                        <ul>
+                            ${links.map(link => `
+                                <li>
+                                    <a href="${_.escape(link.url)}" target="_blank">
+                                        ${_.escape(link.label)}
+                                    </a>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    `;
+                }
+            } catch (error) {
+                downloadLinksDiv.innerHTML = `<div class="error">${_.escape(error.message)}</div>`;
+            }
+        }
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+            showLoading();
+
+            const query = document.getElementById('query').value;
+            const searchBy = document.getElementById('searchBy').value;
+
+            try {
+                const books = await searchLibgen(query, searchBy);
+                if (books.length === 0) {
+                    resultsDiv.innerHTML = '<div class="loading">No results found</div>';
+                } else {
+                    displayResults(books);
+                }
+            } catch (error) {
+                showError(error.message);
+                resultsDiv.innerHTML = '';
+            }
+        });
+    </script>
+</body>
+</html>
