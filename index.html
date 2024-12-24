@@ -6,16 +6,18 @@
         <title>niv's libgen frontend</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
         <style>
+         @import url('https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
          :root {
-             --primary: #4f46e5;
-             --primary-hover: #4338ca;
-             --background: #f9fafb;
-             --card-bg: #ffffff;
-             --text: #1f2937;
-             --text-secondary: #6b7280;
-             --border: #e5e7eb;
-             --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-             --radius: 0.75rem;
+             --primary: #DC143C; /* Crimson */
+             --primary-hover: #B01717; /* Darker Crimson */
+             --background: #f8f8f8; /* Slightly lighter background */
+             --card-bg: #fff;
+             --text: #333; /* Darker text for better contrast */
+             --text-secondary: #777;
+             --border: #ddd; /* Lighter border */
+             --shadow: 0 2px 5px rgba(0, 0, 0, 0.08); /* More pronounced shadow */
+             --radius: 0.5rem; /* Slightly smaller radius for a modern look */
+             --focus-shadow: 0 0 0 3px rgba(229, 70, 70, 0.4); /* Original focus outline */
          }
 
 		 * {
@@ -25,12 +27,42 @@
 		 }
 
 		 body {
-			 font-family: 'Inter', system-ui, -apple-system, sans-serif;
+			 font-family: 'Barlow', system-ui, -apple-system, sans-serif;
 			 background: var(--background);
 			 color: var(--text);
 			 line-height: 1.6;
-			 padding: 2rem 1rem;
+			 padding: 2rem;
+			 display: flex;
+			 justify-content: center;
+			 align-items: start;
+			 min-height: 100vh;
 		 }
+
+		 .container {
+			 max-width: 900px; /* Slightly narrower container */
+			 width: 100%;
+		 }
+
+		 .header {
+			 text-align: center;
+			 margin-bottom: 2.5rem;
+		 }
+
+		 .header h1 {
+			 font-size: 2.2rem;
+			 font-weight: 600;
+			 color: var(--primary);
+			 margin-bottom: 0.3rem;
+		 }
+
+		 .search-form {
+			 background: var(--card-bg);
+			 padding: 1.5rem;
+			 border-radius: var(--radius);
+			 box-shadow: var(--shadow);
+			 margin-bottom: 1.5rem;
+		 }
+
 
 		 .container {
 			 max-width: 1000px;
@@ -44,7 +76,7 @@
 
 		 .header h1 {
 			 font-size: 2.5rem;
-			 font-weight: 700;
+			 font-weight: 500;
 			 color: var(--primary);
 			 margin-bottom: 0.5rem;
 		 }
@@ -63,58 +95,64 @@
 			 gap: 1rem;
 			 align-items: center;
 		 }
-
 		 input,
-		 select {
-			 padding: 0.75rem 1rem;
-			 border: 2px solid var(--border);
-			 border-radius: var(--radius);
+		 select,
+		 button {
+			 font-family: inherit; /* Inherit font for consistency */
 			 font-size: 1rem;
-			 transition: all 0.2s;
+			 padding: 0.75rem 1rem;
+			 border: 1px solid var(--border); /* Thinner border */
+			 border-radius: var(--radius);
+			 transition: border-color 0.2s, box-shadow 0.2s;
+		 }
+
+		 input {
 			 width: 100%;
 		 }
 
 		 input:focus,
-		 select:focus {
-			 border-color: var(--primary);
+		 select:focus,
+		 button:focus {
 			 outline: none;
-			 box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+			 border-color: var(--primary);
+			 box-shadow: var(--focus-shadow);
 		 }
 
 		 button {
-			 padding: 0.75rem 1.5rem;
 			 background: var(--primary);
 			 color: white;
 			 border: none;
-			 border-radius: var(--radius);
 			 font-weight: 600;
 			 cursor: pointer;
-			 transition: all 0.2s;
 		 }
 
 		 button:hover {
 			 background: var(--primary-hover);
-			 transform: translateY(-1px);
 		 }
 
 		 .book-card {
 			 background: var(--card-bg);
 			 border-radius: var(--radius);
-			 padding: 1.5rem;
+			 padding: 1.25rem;
 			 margin-bottom: 1rem;
 			 box-shadow: var(--shadow);
-			 transition: transform 0.2s;
+			 transition: transform 0.15s ease-in-out;
+			 border: 1px solid transparent; /* Add transparent border for focus */
 		 }
 
 		 .book-card:hover {
-			 transform: translateY(-2px);
+			 transform: scale(1.01);
+		 }
+
+		 .book-card:focus-within {
+			 border-color: var(--primary);
 		 }
 
 		 .book-title {
-			 font-size: 1.25rem;
+			 font-size: 1.1rem;
 			 font-weight: 600;
 			 color: var(--text);
-			 margin-bottom: 1rem;
+			 margin-bottom: 0.75rem;
 			 white-space: nowrap;
 			 overflow: hidden;
 			 text-overflow: ellipsis;
@@ -122,14 +160,15 @@
 
 		 .book-meta {
 			 display: grid;
-			 grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-			 gap: 0.75rem;
-			 margin-bottom: 1.25rem;
+			 grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			 gap: 0.5rem;
+			 margin-bottom: 1rem;
+			 font-size: 0.9rem;
 		 }
 
 		 .meta-item {
 			 display: flex;
-			 gap: 0.5rem;
+			 gap: 0.3rem;
 			 align-items: baseline;
 			 min-width: 0;
 		 }
@@ -150,51 +189,116 @@
 
 		 .book-links {
 			 display: flex;
-			 gap: 0.75rem;
+			 gap: 0.5rem;
 			 flex-wrap: wrap;
-			 padding-top: 0.5rem;
+			 padding-top: 0.75rem;
 			 border-top: 1px solid var(--border);
 		 }
 
 		 .mirror-button {
-			 padding: 0.5rem 1rem;
+			 padding: 0.5rem 0.8rem;
 			 background: transparent;
 			 border: 1px solid var(--primary);
 			 color: var(--primary);
-			 font-size: 0.875rem;
+			 font-size: 0.8rem;
 			 border-radius: var(--radius);
+			 cursor: pointer;
+			 transition: background-color 0.2s, color 0.2s;
 		 }
 
-		 .mirror-button:hover {
-			 background: var(--primary);
+		 .mirror-button:hover,
+		 .mirror-button:focus {
+			 background-color: var(--primary);
 			 color: white;
+			 outline: none; /* Remove default focus outline */
 		 }
 
 		 .download-links {
-			 margin-top: 1rem;
+			 margin-top: 0.75rem;
 			 padding: 1rem;
 			 background: var(--background);
 			 border-radius: var(--radius);
 			 display: none;
+			 font-size: 0.9rem;
 		 }
 
 		 .download-links.active {
 			 display: block;
 		 }
 
+		 .download-links ul {
+			 list-style: none;
+			 padding-left: 0;
+		 }
+
+		 .download-links li {
+			 margin-bottom: 0.5rem;
+		 }
+
+		 .download-links a {
+			 color: var(--primary);
+			 text-decoration: none;
+			 transition: color 0.2s;
+			 display: inline-block;
+			 padding: 0.3rem 0.5rem;
+			 border-radius: var(--radius);
+		 }
+
+		 .download-links a:hover,
+		 .download-links a:focus {
+			 background-color: rgba(220, 20, 60, 0.1); /* Light crimson background */
+			 color: var(--primary-hover);
+			 outline: none;
+		 }
+
+		 .error {
+			 color: #cc0000;
+			 background-color: #ffe0e0;
+			 padding: 1rem;
+			 border-radius: var(--radius);
+			 margin-bottom: 1rem;
+		 }
+
+		 .loading {
+			 padding: 1rem;
+			 text-align: center;
+			 color: var(--text-secondary);
+		 }
+
+		 /* Ensure consistent button appearance in the search form */
+		 .search-form button {
+			 padding-left: 1.25rem;
+			 padding-right: 1.25rem;
+		 }
+
+
+		 select {
+			 padding: 0.75rem 1rem;
+			 background-color: var(--card-bg);
+			 border: 2px solid var(--border);
+			 border-radius: var(--radius);
+			 font-size: 1rem;
+			 transition: all 0.2s;
+			 width: 100%;
+		 }
+
+		 select::-ms-expand {
+			 display: none; /* For IE */
+		 }
+
 		 @media (max-width: 768px) {
+			 body {
+				 padding: 1rem;
+			 }
 			 .search-row {
 				 grid-template-columns: 1fr;
+			 }
+			 .search-form button {
+				 width: 100%;
 			 }
 		 }
 
 		 @media (max-width: 640px) {
-			 .book-meta {
-				 grid-template-columns: repeat(2, 1fr);
-			 }
-		 }
-
-		 @media (max-width: 480px) {
 			 .book-meta {
 				 grid-template-columns: 1fr;
 			 }
@@ -205,8 +309,9 @@
 	<body>
 		<div class="container">
 			<div class="header">
-				<h1>search niv's libgen frontend</h1>
+				<h1>[ niv's libgen frontend ]</h1>
 			</div>
+
 
 			<form class="search-form" id="searchForm">
 				<div class="search-row">
