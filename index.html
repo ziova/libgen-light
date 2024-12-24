@@ -63,7 +63,6 @@
 			 margin-bottom: 1.5rem;
 		 }
 
-
 		 .container {
 			 max-width: 1000px;
 			 margin: 0 auto;
@@ -75,10 +74,10 @@
 		 }
 
 		 .header h1 {
-			 font-size: 2.5rem;
+			 font-size: 2.2rem;
 			 font-weight: 500;
 			 color: var(--primary);
-			 margin-bottom: 0.5rem;
+			 margin-bottom: 0.1rem;
 		 }
 
 		 .search-form {
@@ -271,7 +270,6 @@
 			 padding-right: 1.25rem;
 		 }
 
-
 		 select {
 			 padding: 0.75rem 1rem;
 			 background-color: var(--card-bg);
@@ -311,7 +309,6 @@
 			<div class="header">
 				<h1>[ niv's libgen frontend ]</h1>
 			</div>
-
 
 			<form class="search-form" id="searchForm">
 				<div class="search-row">
@@ -470,7 +467,7 @@
                  Mirror ${index + 1}
 				 </button>
 				 `).join('')}
-        <button class="mirror-button" onclick="handleDownloadClick(this, '${book.md5}');">
+        <button class="mirror-button" onclick="handleDownloadClick(this, '${book.md5}', '${_.escape(book.title)}.${_.escape(book.extension)}');">
             Direct Download
         </button>
     </div>
@@ -521,18 +518,27 @@
              }
          }
 
-         async function handleDownloadClick(button, md5) {
+         async function handleDownloadClick(button, md5, filename) {
              const bookCard = button.closest('.book-card');
              const downloadLinksDiv = bookCard.querySelector('.download-links');
 
-             downloadLinksDiv.innerHTML = '<div class="loading">Loading direct download link...</div>';
+             downloadLinksDiv.innerHTML = '<div class="loading">Preparing download...</div>';
              downloadLinksDiv.classList.add('active');
 
              try {
                  const downloadLink = await getDownloadLink(md5);
-                 downloadLinksDiv.innerHTML = `
-                     <a href="${_.escape(downloadLink)}" target="_blank">Download</a>
-                 `;
+                 if (downloadLink) {
+                     // Programmatically trigger the download
+                     const link = document.createElement('a');
+                     link.href = downloadLink;
+                     link.setAttribute('download', filename); // Set the desired filename
+                     document.body.appendChild(link);
+                     link.click();
+                     document.body.removeChild(link);
+                     downloadLinksDiv.textContent = 'Download started...';
+                 } else {
+                     downloadLinksDiv.innerHTML = `<div class="error">Download link not found.</div>`;
+                 }
              } catch (error) {
                  console.error('Error fetching download link:', error);
                  downloadLinksDiv.innerHTML = `<div class="error">${_.escape(error.message)}</div>`;
@@ -550,7 +556,7 @@
                  if (getLinkElement) {
                      return LIBGEN_LI_MIRROR + '/' + getLinkElement.getAttribute('href');
                  } else {
-                     throw new Error('Download link not found.');
+                     return null; // Indicate that the download link was not found
                  }
              } catch (error) {
                  console.error('Error fetching download link:', error);
@@ -583,10 +589,12 @@
 
                  // Add direct download link using MD5 hash
                  const directDownloadLink = await getDownloadLink(md5);
-                 links.push({
-                     url: directDownloadLink,
-                     label: 'Direct Download Link'
-                 });
+                 if (directDownloadLink) {
+                     links.push({
+                         url: directDownloadLink,
+                         label: 'Direct Download Link'
+                     });
+                 }
 
                  return links;
              } catch (error) {
